@@ -78,12 +78,24 @@ M.open = function(items, opts)
   volt.run(buf, { h = h, w = bufv.w })
   vim.bo[buf].filetype = "NvMenu"
 
+  -- Save original timeoutlen and set to 0 for instant keymap execution
+  if not state.old_timeoutlen then
+    state.old_timeoutlen = vim.o.timeoutlen
+    vim.o.timeoutlen = 0
+  end
+
   volt_events.add(buf)
 
   local close_post = function()
     state.bufs = {}
     state.config = nil
     state.nested_menu = ""
+
+    -- Restore original timeoutlen
+    if state.old_timeoutlen then
+      vim.o.timeoutlen = state.old_timeoutlen
+      state.old_timeoutlen = nil
+    end
 
     if api.nvim_win_is_valid(state.old_data.win) then
       api.nvim_set_current_win(state.old_data.win)

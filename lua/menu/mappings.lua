@@ -5,24 +5,32 @@ local state = require "menu.state"
 local M = {}
 
 M.actions = function(items, buf)
-  local tb = vim.tbl_filter(function(v)
-    return v.rtxt and v.cmd
-  end, items)
+  -- Map all items with commands (both rtxt and keybind)
+  for _, v in ipairs(items) do
+    if v.cmd then
+      local action = function()
+        require("volt").close()
 
-  for _, v in ipairs(tb) do
-    local action = function()
-      require("volt").close()
+        if type(v.cmd) == "string" then
+          vim.cmd(v.cmd)
+        else
+          v.cmd()
+        end
+      end
 
-      if type(v.cmd) == "string" then
-        vim.cmd(v.cmd)
-      else
-        v.cmd()
+      -- Map rtxt if it exists
+      if v.rtxt then
+        map("n", v.rtxt, action, { buffer = buf, nowait = true })
+      end
+
+      -- Also map keybind if it exists (takes priority in menu)
+      if v.keybind then
+        map("n", v.keybind, action, { buffer = buf, nowait = true })
       end
     end
-
-    map("n", v.rtxt, action, { buffer = buf })
   end
 
+  -- Map nested menus
   local nested_menus = vim.tbl_filter(function(v)
     return v.items
   end, items)
@@ -32,7 +40,7 @@ M.actions = function(items, buf)
       map("n", v.keybind, function()
         vim.api.nvim_win_set_cursor(0, { vim.fn.index(items, v) + 1, 0 })
         utils.toggle_nested_menu(v.name, v.items)
-      end, { buffer = buf })
+      end, { buffer = buf, nowait = true })
     end
   end
 end
@@ -41,11 +49,11 @@ M.nav_win = function()
   for _, v in ipairs(vim.tbl_keys(state.bufs)) do
     map("n", "h", function()
       utils.switch_win(-1)
-    end, { buffer = v })
+    end, { buffer = v, nowait = true })
 
     map("n", "l", function()
       utils.switch_win(1)
-    end, { buffer = v })
+    end, { buffer = v, nowait = true })
   end
 end
 
